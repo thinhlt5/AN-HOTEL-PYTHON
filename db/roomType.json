@@ -1,0 +1,23 @@
+[
+    {
+        "typeID": 1,
+        "typeName": "Standard",
+        "description": "A standard room with basic amenities.",
+        "price": 1000000,
+        "imagePath": "hi chua co tai anh ve"
+    },
+    {
+        "typeID": 2,
+        "typeName": "Deluxe",
+        "description": "A deluxe room with additional space and amenities.",
+        "price": 2000000,
+        "imagePath": "hi chua co tai anh ve"
+    },
+    {
+        "typeID": 3,
+        "typeName": "Suite",
+        "description": "A luxurious suite with premium features.",
+        "price": 3000000,
+        "imagePath": "hi chua co tai anh ve"
+    }
+]

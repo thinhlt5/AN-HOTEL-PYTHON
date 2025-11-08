@@ -1,0 +1,26 @@
+[
+    {
+        "roomId": 1,
+        "roomNumber": "101",
+        "typeID": 1,
+        "Status": "Available"
+    },
+    {
+        "roomId": 2,
+        "roomNumber": "201",
+        "typeID": 2,
+        "Status": "Available"
+    },
+    {
+        "roomId": 3,
+        "roomNumber": "301",
+        "typeID": 3,
+        "Status": "Available"
+    },
+    {
+        "roomId": 4,
+        "roomNumber": "102",
+        "typeID": 1,
+        "Status": "Available"
+    }
+]

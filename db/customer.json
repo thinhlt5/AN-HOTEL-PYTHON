@@ -1,0 +1,30 @@
+[
+    {
+        "customerID": 1,
+        "name": "Le Thinh",
+        "email": "letruongthinh0@gmail.com",
+        "phone": "0365574437",
+        "passwordHash": "testhash"
+    },
+    {
+        "customerID": 2,
+        "name": "John Doe",
+        "email": "test@example.com",
+        "phone": "0123456789",
+        "passwordHash": "anotherhash"
+    },
+    {
+        "customerID": 3,
+        "name": "Jane Smith",
+        "email": "test@example.com",
+        "phone": "0987654321",
+        "passwordHash": "yetanotherhash"
+    },
+    {
+        "customerID": 4,
+        "name": "Alice Johnson",
+        "email": "test@example.com",
+        "phone": "0112233445",
+        "passwordHash": "hashvalue"
+    }
+]

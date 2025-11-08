@@ -1,0 +1,14 @@
+[
+    {
+        "bookingID": 1,
+        "customerID": 1,
+        "checkInDate": "2024-07-01T14:00:00Z",
+        "checkOutDate": "2024-07-05T12:00:00Z",
+        "roomId": 1,
+        "totalAmount": 4000000,
+        "numGuests": 2,
+        "status": "Confirmed",
+        "guestName": "Le Thinh",
+        "guestID": "0365574437"
+    }
+]

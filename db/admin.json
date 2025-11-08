@@ -1,0 +1,26 @@
+[
+    {
+        "adminID": 1,
+        "name": "Admin One",
+        "username": "adminUser",
+        "passwordHash": "hashed_password_123"
+    },
+    {
+        "adminID": 2,
+        "name": "Admin Two",
+        "username": "superAdmin",
+        "passwordHash": "hashed_password_456"
+    },
+    {
+        "adminID": 3,
+        "name": "Admin Three",
+        "username": "masterAdmin",
+        "passwordHash": "hashed_password_789"
+    },
+    {   
+        "adminID": 4,
+        "name": "Admin Four",
+        "username": "chiefAdmin",
+        "passwordHash": "hashed_password_101"
+    }
+]
