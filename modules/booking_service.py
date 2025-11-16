@@ -24,22 +24,22 @@ class BookingService:
         self.db.add_booking(booking_data)
         return booking_data
 
-    def get_user_bookings(self, customer_id):
+    def view_booking_list(self, customer_id):
         return self.db.get_customer_bookings(customer_id)
 
-    def get_booking_by_id(self, booking_id):
+    def view_booking_details(self, booking_id, customer_id=None):
         bookings = self.db.get_all_bookings()
         for booking in bookings:
             if booking.get("bookingID") == booking_id:
-                return booking
+                if customer_id is None or booking.get("customerID") == customer_id:
+                    return booking
         return None
 
     def cancel_booking(self, booking_id, customer_id):
-        booking = self.get_booking_by_id(booking_id)
-        if booking and booking.get("customerID") == customer_id:
-            if booking.get("status") == "Awaiting Confirmation":
-                self.db.update_booking_status(booking_id, "Canceled")
-                return True
+        booking = self.view_booking_details(booking_id, customer_id)
+        if booking and booking.get("status") == "Awaiting Confirmation":
+            self.db.update_booking_status(booking_id, "Canceled")
+            return True
         return False
 
     def get_all_bookings(self):
