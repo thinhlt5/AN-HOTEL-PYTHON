@@ -3,13 +3,13 @@
         "roomId": 1,
         "roomNumber": "101",
         "typeID": 1,
-        "Status": "Available"
+        "Status": "Maintenance"
     },
     {
         "roomId": 2,
         "roomNumber": "201",
         "typeID": 2,
-        "Status": "Booked"
+        "Status": "Available"
     },
     {
         "roomId": 3,
@@ -21,6 +21,12 @@
         "roomId": 4,
         "roomNumber": "102",
         "typeID": 1,
-        "Status": "Available"
+        "Status": "Maintenance"
+    },
+    {
+        "roomId": 5,
+        "roomNumber": "105",
+        "typeID": 3,
+        "Status": "Maintenance"
     }
 ]

@@ -14,59 +14,49 @@ ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 
-class BookView(ctk.CTk):
-    def __init__(self, room=None, checkin_date=None, checkout_date=None, num_guests=1, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Set window properties
-        self.title("AN Hotel - Book Room")
-        self.geometry("630x750")
-        self.resizable(False, False)
-        
-        # Initialize services
-        self.db_manager = DBManager("db")
-        self.booking_service = BookingService()
-        
-        # Store booking parameters
+class BookView(ctk.CTkFrame):
+    def __init__(self, parent, controller=None, room=None, checkin_date=None, checkout_date=None, num_guests=1, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.controller = controller
+        # Use controller's services if available, otherwise create new ones
+        if controller:
+            self.db_manager = controller.get_db_manager()
+            self.booking_service = controller.get_booking_service()
+        else:
+            self.db_manager = DBManager("db")
+            self.booking_service = BookingService(self.db_manager)
         self.room = room
         self.checkin_date = checkin_date
         self.checkout_date = checkout_date
         self.num_guests = num_guests
-        
-        # Get room type info
         self.room_type = None
-        if room:
-            room_types = self.db_manager.get_all_room_types()
-            for rt in room_types:
-                if rt["typeID"] == room["typeID"]:
-                    self.room_type = rt
-                    break
-        
-        # Calculate total amount
         self.total_amount = 0
-        if self.room_type and self.checkin_date and self.checkout_date:
-            self.total_amount = self.booking_service.calculate_total_amount(
-                self.room_type.get("price", 0),
-                self.checkin_date,
-                self.checkout_date,
-                self.num_guests
-            )
-        
-        # Create main container
+        self.is_booking_in_progress = False  # Flag to prevent spam clicking
+        self._initialize_room_data()
+        self.configure(fg_color="white")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
         self.main_container = ctk.CTkFrame(self, fg_color="white")
-        self.main_container.pack(side="top", fill="both", expand=True)
+        self.main_container.grid(row=0, column=0, sticky="nsew")
         self.main_container.grid_rowconfigure(0, weight=1)
-        self.main_container.grid_columnconfigure(0, weight=0)  # Sidebar
-        self.main_container.grid_columnconfigure(1, weight=5)  # Main content
+        self.main_container.grid_columnconfigure(0, weight=0)
+        self.main_container.grid_columnconfigure(1, weight=5)
         
         # Left sidebar - Navigation
-        self.create_sidebar()
+        self.sidebar = None  # Initialize sidebar variable
         
         # Right side - Main content
         self.create_main_content()
+        
+        # Create sidebar after main content
+        self.create_sidebar()
     
     def create_sidebar(self):
         """Create left sidebar navigation"""
+        # Destroy existing sidebar if it exists
+        if self.sidebar:
+            self.sidebar.destroy()
+        
         self.sidebar = ctk.CTkFrame(
             self.main_container,
             fg_color="#E5E5E5",
@@ -76,13 +66,29 @@ class BookView(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         
-        # Navigation items
+        # Get user name from controller
+        user_name = "User"
+        if self.controller:
+            current_user = self.controller.get_current_user()
+            if current_user:
+                user_name = current_user.get("name", current_user.get("email", "User"))
+        
+        # Greeting label
+        greeting_label = ctk.CTkLabel(
+            self.sidebar,
+            text=f"Hi, {user_name}",
+            font=("SVN-Gilroy", 16, "bold"),
+            text_color="black",
+            anchor="w"
+        )
+        greeting_label.pack(fill="x", padx=10, pady=(20, 10))
+        
+        # Navigation items for logged-in users
         nav_items = [
             "Home",
-            "Rooms",
-            "Our Services",
+            "Room",
             "My Bookings",
-            "Account settings",
+            "Account Settings",
             "Sign out"
         ]
         
@@ -131,9 +137,11 @@ class BookView(ctk.CTk):
         self.create_booking_form()
         
         # Create trip summary section
+        self.summary_frame = None
+        self.summary_widgets = {}
         self.create_trip_summary()
         
-        # Error message label (initially hidden)
+        # Error/Success message label (before book button)
         self.error_label = ctk.CTkLabel(
             self.scrollable_frame,
             text="",
@@ -144,7 +152,7 @@ class BookView(ctk.CTk):
         )
         self.error_label.pack(anchor="w", padx=10, pady=(10, 0))
         
-        # Create book button
+        # Create book button (after error/success message)
         self.create_book_button()
     
     def create_booking_form(self):
@@ -240,14 +248,70 @@ class BookView(ctk.CTk):
         )
         self.national_id_entry.pack(fill="x", pady=(0, 20))
     
+    def _initialize_room_data(self):
+        """Initialize room type and total amount from current data"""
+        self.room_type = None
+        
+        if self.room:
+            # Check if room already has roomType nested object (from SearchView)
+            if "roomType" in self.room and self.room["roomType"]:
+                self.room_type = self.room["roomType"]
+            elif self.db_manager and "typeID" in self.room:
+                # Lookup room type by typeID
+                room_types = self.db_manager.get_all_room_types()
+                if room_types:
+                    room_type_id = self.room.get("typeID")
+                    # Handle both int and string comparison
+                    for rt in room_types:
+                        if rt.get("typeID") == room_type_id or str(rt.get("typeID")) == str(room_type_id):
+                            self.room_type = rt
+                            break
+        
+        self.total_amount = 0
+        if self.room_type and self.checkin_date and self.checkout_date and self.booking_service:
+            # Ensure dates are date objects, not strings
+            checkin = self.checkin_date
+            checkout = self.checkout_date
+            
+            # Convert string dates to date objects if needed
+            if isinstance(checkin, str):
+                try:
+                    checkin = datetime.strptime(checkin.strip(), "%d/%m/%Y").date()
+                except:
+                    try:
+                        checkin = datetime.strptime(checkin.strip(), "%Y-%m-%d").date()
+                    except:
+                        checkin = None
+            
+            if isinstance(checkout, str):
+                try:
+                    checkout = datetime.strptime(checkout.strip(), "%d/%m/%Y").date()
+                except:
+                    try:
+                        checkout = datetime.strptime(checkout.strip(), "%Y-%m-%d").date()
+                    except:
+                        checkout = None
+            
+            if checkin and checkout:
+                self.total_amount = self.booking_service.calculate_total_amount(
+                    self.room_type.get("price", 0),
+                    checkin,
+                    checkout,
+                    self.num_guests
+                )
+    
     def create_trip_summary(self):
         """Create trip summary section"""
-        summary_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
-        summary_frame.pack(fill="x", pady=(0, 30))
+        # Remove old summary if exists
+        if self.summary_frame:
+            self.summary_frame.destroy()
+        
+        self.summary_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
+        self.summary_frame.pack(fill="x", pady=(0, 30))
         
         # Title
         summary_title = ctk.CTkLabel(
-            summary_frame,
+            self.summary_frame,
             text="Your trip summary",
             font=("SVN-Gilroy", 18, "bold"),
             text_color="black",
@@ -258,8 +322,8 @@ class BookView(ctk.CTk):
         # Get room type name
         room_type_name = self.room_type.get("typeName", "Unknown") if self.room_type else "Unknown"
         room_number = self.room.get("roomNumber", "N/A") if self.room else "N/A"
-        checkin_str = self.checkin_date.strftime("%d/%m/%Y") if self.checkin_date else "N/A"
-        checkout_str = self.checkout_date.strftime("%d/%m/%Y") if self.checkout_date else "N/A"
+        checkin_str = self.checkin_date.strftime("%d/%m/%Y") if self.checkin_date and hasattr(self.checkin_date, 'strftime') else (str(self.checkin_date) if self.checkin_date else "N/A")
+        checkout_str = self.checkout_date.strftime("%d/%m/%Y") if self.checkout_date and hasattr(self.checkout_date, 'strftime') else (str(self.checkout_date) if self.checkout_date else "N/A")
         
         # Create summary items as label pairs
         summary_items = [
@@ -271,9 +335,12 @@ class BookView(ctk.CTk):
             ("Total price", f"{self.total_amount:,} VND")
         ]
         
+        # Store widgets for updating
+        self.summary_widgets = {}
+        
         # Display summary items
         for label_text, value_text in summary_items:
-            item_frame = ctk.CTkFrame(summary_frame, fg_color="white")
+            item_frame = ctk.CTkFrame(self.summary_frame, fg_color="white")
             item_frame.pack(fill="x", pady=5)
             
             # Label on the left
@@ -295,11 +362,36 @@ class BookView(ctk.CTk):
                 anchor="e"
             )
             value.pack(side="right", anchor="e", fill="x", expand=True, padx=(20, 0))
+            self.summary_widgets[label_text] = value
+    
+    def update_booking_data(self, room=None, checkin_date=None, checkout_date=None, num_guests=1):
+        """Update booking data and refresh the view"""
+        if room is not None:
+            self.room = room
+        if checkin_date is not None:
+            self.checkin_date = checkin_date
+        if checkout_date is not None:
+            self.checkout_date = checkout_date
+        if num_guests is not None:
+            self.num_guests = num_guests
+        
+        # Reset booking flag when updating data (new booking)
+        self.is_booking_in_progress = False
+        
+        # Recalculate room data
+        self._initialize_room_data()
+        
+        # Refresh trip summary
+        self.create_trip_summary()
+        
+        # Re-enable button if it was disabled
+        if hasattr(self, 'book_btn'):
+            self.book_btn.configure(state="normal", text="BOOK ROOM")
     
     def create_book_button(self):
         """Create book button"""
         button_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
-        button_frame.pack(fill="x", pady=(30, 0))
+        button_frame.pack(fill="x", pady=(0, 10))
         
         self.book_btn = ctk.CTkButton(
             button_frame,
@@ -364,21 +456,42 @@ class BookView(ctk.CTk):
         )
         success_label.pack(padx=20, pady=20)
         
+        def close_and_navigate():
+            success_window.destroy()
+            # Navigate to MyBookingsView instead of destroying frame
+            if self.controller:
+                self.controller.show_frame("MyBookingsView")
+        
         ok_btn = ctk.CTkButton(
             success_window,
             text="OK",
             font=("SVN-Gilroy", 20, "bold"),
-            command=lambda: [success_window.destroy(), self.destroy()]
+            command=close_and_navigate
         )
         ok_btn.pack(pady=10)
     
     def on_book_room(self):
         """Handle book room button click"""
+        # Prevent spam clicking - if already processing, ignore
+        if self.is_booking_in_progress:
+            return
+        
         # Validate form
         if not self.validate_form():
             return
         
+        # Set flag and disable button to prevent spam
+        self.is_booking_in_progress = True
+        self.book_btn.configure(state="disabled", text="Processing...")
+        
         try:
+            # Get customer ID from session if user is logged in
+            customer_id = None
+            if self.controller:
+                current_user = self.controller.get_current_user()
+                if current_user:
+                    customer_id = current_user.get("customerID")
+            
             # Create booking using booking service
             guest_name = self.name_entry.get().strip()
             guest_phone = self.phone_entry.get().strip()
@@ -394,19 +507,43 @@ class BookView(ctk.CTk):
                 guest_phone=guest_phone,
                 guest_email=guest_email,
                 guest_national_id=guest_national_id,
-                total_amount=self.total_amount
+                total_amount=self.total_amount,
+                customer_id=customer_id
             )
             
-            # Show success message
+            # Show success message (will navigate away, so don't re-enable button)
             self.show_success(f"Booking successful!\nBooking ID: {booking['bookingID']}\nRoom: #{self.room['roomNumber']}")
             
         except Exception as e:
+            # Re-enable button on error so user can try again
+            self.is_booking_in_progress = False
+            self.book_btn.configure(state="normal", text="BOOK ROOM")
             self.show_error(f"Error creating booking: {str(e)}")
     
     def on_nav_click(self, item):
         """Handle navigation item click"""
-        print(f"Navigation clicked: {item}")
-        # TODO: Implement navigation functionality
+        if not self.controller:
+            return
+        
+        nav_map = {
+            "Home": "MainAppView",
+            "Room": "RoomView",
+            "My Bookings": "MyBookingsView",
+            "Account Settings": "AccountView",
+            "Sign out": None  # Special handling
+        }
+        
+        if item == "Sign out":
+            self.controller.logout()
+            return
+        
+        target = nav_map.get(item)
+        if target:
+            self.controller.show_frame(target)
+    
+    def on_show(self):
+        """Called when this view is shown - refresh sidebar to reflect login status"""
+        self.create_sidebar()
 
 
 if __name__ == "__main__":

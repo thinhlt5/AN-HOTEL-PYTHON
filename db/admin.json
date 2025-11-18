@@ -1,26 +1,26 @@
 [
     {
         "adminID": 1,
-        "name": "Admin One",
-        "username": "adminUser",
-        "passwordHash": "hashed_password_123"
+        "email": "admin@gmail.com",
+        "passwordHash": "$2b$12$xw6pK2Pc7/0hohsUrk.jaOyPTmYc3/Wk5CxmP7dJ/8wSIoEZscAPK",
+        "role": "admin"
     },
     {
         "adminID": 2,
-        "name": "Admin Two",
-        "username": "superAdmin",
-        "passwordHash": "hashed_password_456"
+        "email": "admin2@gmail.com",
+        "passwordHash": "$2b$12$xw6pK2Pc7/0hohsUrk.jaOyPTmYc3/Wk5CxmP7dJ/8wSIoEZscAPK",
+        "role": "admin"
     },
     {
         "adminID": 3,
-        "name": "Admin Three",
-        "username": "masterAdmin",
-        "passwordHash": "hashed_password_789"
+        "email": "admin3@gmail.com",
+        "passwordHash": "$2b$12$xw6pK2Pc7/0hohsUrk.jaOyPTmYc3/Wk5CxmP7dJ/8wSIoEZscAPK",
+        "role": "admin"
     },
     {   
         "adminID": 4,
-        "name": "Admin Four",
-        "username": "chiefAdmin",
-        "passwordHash": "hashed_password_101"
+        "email": "admin4@gmail.com",
+        "passwordHash": "$2b$12$xw6pK2Pc7/0hohsUrk.jaOyPTmYc3/Wk5CxmP7dJ/8wSIoEZscAPK",
+        "role": "admin"
     }
 ]

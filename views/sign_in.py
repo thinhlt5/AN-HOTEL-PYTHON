@@ -182,14 +182,25 @@ class SignInView(ctk.CTkFrame):
         if not self.validate_email(email):
             self.show_error("Invalid email format.\n Please enter a valid email address.", field="email")
             return
-        user = self.auth_service.login(email, password)
+        
+        # Dùng unified_login thay vì login
+        user = self.auth_service.unified_login(email, password)
+        
         if user:
-            print(f"Login successful! Welcome {user.get('name', email)}")
+            role = user.get("role")
+            name = user.get("name", email)
+            print(f"Login successful! Welcome {name} ({role})")
             self.show_error("Login successful! Redirecting...", field=None)
             self.error_label.configure(text_color="green")
+            
             if self.controller:
                 self.controller.set_current_user(user)
-                self.controller.show_frame("MainAppView")
+                
+                # Navigate based on role
+                if role == "admin":
+                    self.controller.show_frame("AdminBookingView")
+                else:  # customer
+                    self.controller.show_frame("MainAppView")
         else:
             self.show_error("Invalid email or password.\n Please try again.", field="all")
     

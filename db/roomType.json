@@ -4,7 +4,7 @@
         "typeName": "Standard",
         "description": "A standard room with basic amenities.",
         "price": 1000000,
-        "imagePath": "hi chua co tai anh ve"
+        "imagePath": "assets/images/room_type_1.jpg"
     },
     {
         "typeID": 2,

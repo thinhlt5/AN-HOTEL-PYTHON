@@ -4,61 +4,57 @@ import os
 from datetime import datetime, date
 import re
 import sys
-import json
 
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from modules.db_manager import DBManager
+from modules.booking_service import BookingService
 from modules.search_service import SearchService
-from book_view import BookView
+from .book_view import BookView
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
-class MyBookingsView(ctk.CTk):
-    def __init__(self, checkin=None, checkout=None, guests=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Set window properties
-        self.title("AN Hotel - Search Results")
-        self.geometry("1000x750")
-        self.resizable(False, False)
-        
-        # Initialize database manager
-        self.db_manager = DBManager("db")
-        
-        # Initialize search service
+class MyBookingsView(ctk.CTkFrame):
+    def __init__(self, parent, controller=None, checkin=None, checkout=None, guests=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.controller = controller
+        # Use controller's services if available, otherwise create new ones
+        if controller:
+            self.db_manager = controller.get_db_manager()
+            self.booking_service = controller.get_booking_service()
+        else:
+            self.db_manager = DBManager("db")
+            self.booking_service = BookingService(self.db_manager)
         self.search_service = SearchService()
-        
-        # Store search parameters
         self.search_checkin = checkin
         self.search_checkout = checkout
         self.search_guests = guests
-        
-        # Parse dates if provided
         self.checkin_date = None
         self.checkout_date = None
         if checkin:
             self.checkin_date = self.search_service.parse_date(checkin)
         if checkout:
             self.checkout_date = self.search_service.parse_date(checkout)
-        
-        # Create main container
+        self.configure(fg_color="white")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
         self.main_container = ctk.CTkFrame(self, fg_color="white")
-        self.main_container.pack(side="top", fill="both", expand=True)
+        self.main_container.grid(row=0, column=0, sticky="nsew")
         self.main_container.grid_rowconfigure(0, weight=1)
-        self.main_container.grid_columnconfigure(0, weight=0)  # Sidebar
-        self.main_container.grid_columnconfigure(1, weight=5)  # Main content
-        
-        # Left sidebar - Navigation
-        self.create_sidebar()
-        
-        # Right side - Main content (TabView for bookings)
+        self.main_container.grid_columnconfigure(0, weight=0)
+        self.main_container.grid_columnconfigure(1, weight=5)
+        self.sidebar = None  # Initialize sidebar variable
         self.create_bookings_tabview()
+        self.create_sidebar()  # Create sidebar after main content
     
     def create_sidebar(self):
         """Create left sidebar navigation"""
+        # Destroy existing sidebar if it exists
+        if self.sidebar:
+            self.sidebar.destroy()
+        
         self.sidebar = ctk.CTkFrame(
             self.main_container,
             fg_color="#E5E5E5",
@@ -68,13 +64,29 @@ class MyBookingsView(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         
-        # Navigation items
+        # Get user name from controller
+        user_name = "User"
+        if self.controller:
+            current_user = self.controller.get_current_user()
+            if current_user:
+                user_name = current_user.get("name", current_user.get("email", "User"))
+        
+        # Greeting label
+        greeting_label = ctk.CTkLabel(
+            self.sidebar,
+            text=f"Hi, {user_name}",
+            font=("SVN-Gilroy", 16, "bold"),
+            text_color="black",
+            anchor="w"
+        )
+        greeting_label.pack(fill="x", padx=10, pady=(20, 10))
+        
+        # Navigation items for logged-in users
         nav_items = [
             "Home",
-            "Rooms",
-            "Our Services",
+            "Room",
             "My Bookings",
-            "Account settings",
+            "Account Settings",
             "Sign out"
         ]
         
@@ -120,14 +132,21 @@ class MyBookingsView(ctk.CTk):
         self.load_bookings_data()
 
     def load_bookings_data(self):
-        """Load bookings from booking.json and display in tabs"""
+        """Load bookings using BookingService and display in tabs"""
         bookings = []
-        try:
-            with open(os.path.join("db", "booking.json"), "r", encoding="utf-8") as f:
-                bookings = json.load(f)
-        except Exception as e:
-            print("Error loading bookings:", e)
-            return
+        
+        # Get bookings using BookingService
+        if self.controller:
+            current_user = self.controller.get_current_user()
+            if current_user:
+                customer_id = current_user.get("customerID")
+                # Use BookingService to get customer bookings
+                bookings = self.booking_service.view_booking_list(customer_id)
+            else:
+                # If not logged in, don't show any bookings
+                bookings = []
+        else:
+            bookings = []
 
         # Clear frames
         for frame in [self.upcoming_frame, self.completed_frame, self.canceled_frame]:
@@ -156,19 +175,11 @@ class MyBookingsView(ctk.CTk):
         title = ctk.CTkLabel(card, text=f"Booking ID: {booking.get('bookingID', '')}", font=("SVN-Gilroy", 16, "bold"), text_color="black", anchor="w")
         title.pack(anchor="w", pady=(10, 5), padx=20)
 
-        # Get room number from room.json
+        # Get room number using BookingService
         room_number = ""
-        try:
-            room_id = booking.get("roomId")
-            if room_id:
-                with open(os.path.join("db", "room.json"), "r", encoding="utf-8") as f:
-                    rooms = json.load(f)
-                for r in rooms:
-                    if r.get("roomId") == room_id:
-                        room_number = r.get("roomNumber", "")
-                        break
-        except Exception:
-            room_number = ""
+        room_id = booking.get("roomId")
+        if room_id and self.booking_service:
+            room_number = self.booking_service.get_room_number_by_id(room_id)
 
         # Format dates
         def format_date(dt):
@@ -214,17 +225,46 @@ class MyBookingsView(ctk.CTk):
 
     def cancel_booking(self, booking):
         """Call BookingService to cancel booking, then refresh UI"""
-        from modules.booking_service import BookingService
-        service = BookingService()
+        if not self.booking_service:
+            return
+        
         booking_id = booking.get("bookingID")
-        # If you have customer_id, pass it, else None
-        service.cancel_booking(booking_id, None)
+        customer_id = None
+        if self.controller:
+            current_user = self.controller.get_current_user()
+            if current_user:
+                customer_id = current_user.get("customerID")
+        
+        # Use BookingService to cancel booking
+        success = self.booking_service.cancel_booking(booking_id, customer_id)
+        if success:
+            self.load_bookings_data()
+    
+    def on_show(self):
+        """Called when this view is shown - reload bookings data and refresh sidebar"""
+        self.create_sidebar()  # Refresh sidebar to reflect login status
         self.load_bookings_data()
     
     def on_nav_click(self, item):
         """Handle navigation item click"""
-        print(f"Navigation clicked: {item}")
-        # TODO: Implement navigation functionality
+        if not self.controller:
+            return
+        
+        nav_map = {
+            "Home": "MainAppView",
+            "Room": "RoomView",
+            "My Bookings": "MyBookingsView",
+            "Account Settings": "AccountView",
+            "Sign out": None  # Special handling
+        }
+        
+        if item == "Sign out":
+            self.controller.logout()
+            return
+        
+        target = nav_map.get(item)
+        if target:
+            self.controller.show_frame(target)
 
 
 if __name__ == "__main__":

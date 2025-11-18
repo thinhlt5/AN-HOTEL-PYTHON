@@ -5,7 +5,7 @@ class BookingService:
     def __init__(self, db_manager=None):
         self.db = db_manager or DBManager("db")
 
-    def create_booking(self, room_id, checkin_date, checkout_date, num_guests, guest_name, guest_phone, guest_email, guest_national_id, total_amount):
+    def create_booking(self, room_id, checkin_date, checkout_date, num_guests, guest_name, guest_phone, guest_email, guest_national_id, total_amount, customer_id=None):
         """
         Create a new booking
         
@@ -19,6 +19,7 @@ class BookingService:
             guest_email: Guest email
             guest_national_id: Guest national ID
             total_amount: Total booking amount
+            customer_id: Customer ID if user is logged in (optional)
             
         Returns:
             Booking data with auto-generated bookingID
@@ -34,7 +35,7 @@ class BookingService:
         
         booking_data = {
             "bookingID": new_booking_id,
-            "customerID": None,  # Will be set when customer logs in
+            "customerID": customer_id,  # Set from logged-in user session
             "roomId": room_id,
             "checkInDate": checkin_date,
             "checkOutDate": checkout_date,
@@ -126,3 +127,131 @@ class BookingService:
 
     def check_room_availability(self, room_id, check_in, check_out):
         return self.db.is_room_available(room_id, check_in, check_out)
+    
+    def get_room_number_by_id(self, room_id):
+        """Get room number by room ID"""
+        rooms = self.db.get_all_rooms()
+        for room in rooms:
+            if room.get("roomId") == room_id:
+                return room.get("roomNumber", "")
+        return ""
+    
+    def get_bookings_by_status(self, status):
+        """
+        Get all bookings filtered by status
+        
+        Args:
+            status: Booking status (Pending, Confirmed, In stay, Completed, Cancelled)
+            
+        Returns:
+            List of bookings with the specified status
+        """
+        bookings = self.db.get_all_bookings()
+        # Normalize status names
+        status_map = {
+            "Pending": "Pending",
+            "Confirmed": "Confirmed",
+            "In stay": "In stay",
+            "In Stay": "In stay",
+            "Completed": "Completed",
+            "Cancelled": "Cancelled",
+            "Canceled": "Cancelled"
+        }
+        normalized_status = status_map.get(status, status)
+        
+        filtered = []
+        for booking in bookings:
+            booking_status = booking.get("status", "")
+            # Normalize booking status for comparison
+            if booking_status in status_map:
+                booking_status = status_map[booking_status]
+            if booking_status == normalized_status:
+                filtered.append(booking)
+        return filtered
+    
+    def confirm_booking(self, booking_id):
+        """
+        Confirm a pending booking (Pending -> Confirmed)
+        
+        Args:
+            booking_id: ID of the booking to confirm
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        booking = self.view_booking_details(booking_id)
+        if booking and booking.get("status") == "Pending":
+            self.db.update_booking_status(booking_id, "Confirmed")
+            return True
+        return False
+    
+    def check_in_booking(self, booking_id):
+        """
+        Check in a confirmed booking (Confirmed -> In stay)
+        
+        Args:
+            booking_id: ID of the booking to check in
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        booking = self.view_booking_details(booking_id)
+        if booking and booking.get("status") == "Confirmed":
+            self.db.update_booking_status(booking_id, "In stay")
+            return True
+        return False
+    
+    def cancel_booking_admin(self, booking_id):
+        """
+        Cancel a booking (admin function - can cancel any booking)
+        
+        Args:
+            booking_id: ID of the booking to cancel
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        booking = self.view_booking_details(booking_id)
+        if booking:
+            # Use "Canceled" to match existing data format (normalization handles display)
+            self.db.update_booking_status(booking_id, "Canceled")
+            # Restore room status to Available if booking was active
+            if booking.get("status") in ["Pending", "Confirmed", "In stay"]:
+                self.db.update_room_status(booking["roomId"], "Available")
+            return True
+        return False
+    
+    def auto_complete_checkouts(self):
+        """
+        Automatically change In stay bookings to Completed if checkout date has passed
+        
+        Returns:
+            Number of bookings updated
+        """
+        today = date.today()
+        bookings = self.get_bookings_by_status("In stay")
+        updated_count = 0
+        
+        for booking in bookings:
+            checkout_date_str = booking.get("checkOutDate", "")
+            if not checkout_date_str:
+                continue
+            
+            try:
+                # Parse checkout date (handle both ISO format and date-only format)
+                if "T" in checkout_date_str:
+                    checkout_date = datetime.fromisoformat(checkout_date_str.replace("Z", "+00:00")).date()
+                else:
+                    checkout_date = datetime.strptime(checkout_date_str, "%Y-%m-%d").date()
+                
+                # If checkout date has passed, mark as completed
+                if checkout_date <= today:
+                    self.db.update_booking_status(booking.get("bookingID"), "Completed")
+                    # Update room status to Available
+                    self.db.update_room_status(booking.get("roomId"), "Available")
+                    updated_count += 1
+            except Exception:
+                # Skip if date parsing fails
+                continue
+        
+        return updated_count

@@ -272,10 +272,22 @@ class RegisterView(ctk.CTkFrame):
         # Register user using auth_service
         if self.auth_service.register(name, email, phone, password):
             print(f"Sign up successful with email: {email}")
-            # Show success message and go to login
-            self.show_error("Registration successful! Redirecting to login...", field=None)
-            self.error_label.configure(text_color="green")
-            self.after(1500, self.on_sign_in_link)  # Redirect after 1.5 seconds
+            # Auto login after registration
+            user_data = self.auth_service.login(email, password)
+            if user_data and self.controller:
+                # Set current user
+                self.controller.set_current_user(user_data)
+                # Redirect based on role
+                role = user_data.get("role", "customer")
+                if role == "admin":
+                    self.controller.show_frame("AdminBookingView")
+                else:
+                    self.controller.show_frame("MainAppView")
+            else:
+                # Fallback to login if auto-login fails
+                self.show_error("Registration successful! Redirecting to login...", field=None)
+                self.error_label.configure(text_color="green")
+                self.after(1500, self.on_sign_in_link)
         else:
             self.show_error("The email has already been registered!\n Please try another email", field="email")
     

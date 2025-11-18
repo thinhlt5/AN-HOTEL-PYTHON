@@ -22,6 +22,10 @@ class DBManager:
             return []
 
     def save_json(self, file_path, data):
+        # Create directory if it doesn't exist
+        directory = os.path.dirname(file_path)
+        if directory:  # Only create if directory path is not empty
+            os.makedirs(directory, exist_ok=True)
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -77,6 +81,13 @@ class DBManager:
             if c["customerID"] == customerID:
                 c.update(new_data)
         self.save_json(self.customer_file, customers)
+    
+    def delete_customer(self, customerID):
+        """Delete a customer by ID"""
+        customers = self.load_json(self.customer_file)
+        customers = [c for c in customers if c.get("customerID") != customerID]
+        self.save_json(self.customer_file, customers)
+        return True
 
     def get_admin_by_username(self, username):
         admins = self.load_json(self.admin_file)
@@ -158,6 +169,43 @@ class DBManager:
             if self.is_room_available(r["roomId"], check_in, check_out):
                 available.append(r)
         return available
+    
+    def add_room(self, room_data):
+        """Add a new room"""
+        rooms = self.load_json(self.room_file)
+        rooms.append(room_data)
+        self.save_json(self.room_file, rooms)
+    
+    def update_room(self, roomId, new_data):
+        """Update room information"""
+        rooms = self.load_json(self.room_file)
+        for r in rooms:
+            if r["roomId"] == roomId:
+                r.update(new_data)
+                break
+        self.save_json(self.room_file, rooms)
+    
+    def delete_room(self, roomId):
+        """Delete a room"""
+        rooms = self.load_json(self.room_file)
+        rooms = [r for r in rooms if r["roomId"] != roomId]
+        self.save_json(self.room_file, rooms)
+    
+    def get_room_by_number(self, room_number):
+        """Get room by room number"""
+        rooms = self.load_json(self.room_file)
+        for r in rooms:
+            if r.get("roomNumber") == room_number:
+                return r
+        return None
+    
+    def get_room_type_by_id(self, typeID):
+        """Get room type by ID"""
+        room_types = self.load_json(self.room_type_file)
+        for rt in room_types:
+            if rt.get("typeID") == typeID:
+                return rt
+        return None
 
 
 

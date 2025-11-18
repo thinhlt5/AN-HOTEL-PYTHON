@@ -11,31 +11,37 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
-
 class MainAppView(ctk.CTkFrame):
     def __init__(self, parent, controller=None, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.controller = controller
-
+        
         self.configure(fg_color="white")
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
+        
         # Create main container
         self.main_container = ctk.CTkFrame(self, fg_color="white")
         self.main_container.grid(row=0, column=0, sticky="nsew")
         self.main_container.grid_rowconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(0, weight=0)  # Sidebar
         self.main_container.grid_columnconfigure(1, weight=5)  # Main content
-
-        # Left sidebar - Navigation
-        self.create_sidebar()
-
+        
+        # Left sidebar - Navigation (will be created in create_sidebar)
+        self.sidebar = None
+        
         # Right side - Main content
         self.create_main_content()
+        
+        # Create sidebar initially
+        self.create_sidebar()
     
     def create_sidebar(self):
         """Create left sidebar navigation"""
+        # Destroy existing sidebar if it exists
+        if self.sidebar:
+            self.sidebar.destroy()
+        
         self.sidebar = ctk.CTkFrame(
             self.main_container,
             fg_color="#E5E5E5",
@@ -45,15 +51,41 @@ class MainAppView(ctk.CTkFrame):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         
-        # Navigation items
-        nav_items = [
-            "Home",
-            "Rooms",
-            "Our Services",
-            "My Bookings",
-            "Account settings",
-            "Sign out"
-        ]
+        # Check if user is logged in
+        is_logged_in = False
+        user_name = "User"
+        if self.controller:
+            current_user = self.controller.get_current_user()
+            if current_user:
+                is_logged_in = True
+                user_name = current_user.get("name", current_user.get("email", "User"))
+        
+        if is_logged_in:
+            # Greeting label for logged-in users
+            greeting_label = ctk.CTkLabel(
+                self.sidebar,
+                text=f"Hi, {user_name}",
+                font=("SVN-Gilroy", 16, "bold"),
+                text_color="black",
+                anchor="w"
+            )
+            greeting_label.pack(fill="x", padx=10, pady=(20, 10))
+            
+            # Navigation items for logged-in users
+            nav_items = [
+                "Home",
+                "Room",
+                "My Bookings",
+                "Account Settings",
+                "Sign out"
+            ]
+        else:
+            # Navigation items for non-logged-in users
+            nav_items = [
+                "Home",
+                "Rooms",
+                "Login"
+            ]
         
         # Create navigation buttons
         for i, item in enumerate(nav_items):
@@ -343,6 +375,7 @@ class MainAppView(ctk.CTkFrame):
         # Room cards container
         rooms_container = ctk.CTkFrame(rooms_frame, fg_color="white")
         rooms_container.pack(fill="x", padx=10, pady=(0, 20))
+        # Configure grid for children (room cards will use grid)
         rooms_container.grid_columnconfigure(0, weight=1)
         rooms_container.grid_columnconfigure(1, weight=1)
         rooms_container.grid_columnconfigure(2, weight=1)
@@ -475,6 +508,16 @@ class MainAppView(ctk.CTkFrame):
     
     def on_search(self):
         """Handle search button click"""
+        # Check if user is logged in
+        if not self.controller:
+            return
+        
+        current_user = self.controller.get_current_user()
+        if not current_user:
+            # User not logged in - redirect to login page
+            self.controller.show_frame("SignInView")
+            return
+        
         # Validate dates before searching
         if not self.validate_dates():
             return
@@ -492,11 +535,48 @@ class MainAppView(ctk.CTkFrame):
             self.date_error_label.configure(text="Please enter a valid number of guests (at least 1)")
             return
         
-        # TODO: Integrate with dedicated SearchView frame or window
-        print(f"Searching rooms from {checkin} to {checkout} for {guests} guest(s).")
+        # All validations passed - navigate to SearchView with search parameters
+        if self.controller:
+            self.controller.show_search_view(checkin=checkin, checkout=checkout, guests=guests)
     
     def on_nav_click(self, item):
         """Handle navigation item click"""
-        print(f"Navigation clicked: {item}")
-        if item == "Sign out" and self.controller:
-            self.controller.logout()
+        if not self.controller:
+            return
+        
+        # Check if user is logged in
+        current_user = self.controller.get_current_user()
+        is_logged_in = current_user is not None
+        
+        if is_logged_in:
+            nav_map = {
+                "Home": "MainAppView",
+                "Room": "RoomView",
+                "My Bookings": "MyBookingsView",
+                "Account Settings": "AccountView",
+                "Sign out": None  # Special handling
+            }
+            
+            if item == "Sign out":
+                self.controller.logout()
+                return
+        else:
+            nav_map = {
+                "Home": "MainAppView",
+                "Rooms": "RoomView",
+                "Login": "SignInView"
+            }
+        
+        target = nav_map.get(item)
+        if target:
+            self.controller.show_frame(target)
+    
+    def on_show(self):
+        """Called when this view is shown - refresh sidebar to reflect login status"""
+        self.create_sidebar()
+
+
+if __name__ == "__main__":
+    app = MainAppView()
+    app.mainloop()
+
