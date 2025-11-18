@@ -26,5 +26,19 @@
         "email": "test@example.com",
         "phone": "0112233445",
         "passwordHash": "hashvalue"
+    },
+    {
+        "customerID": 5,
+        "name": "Thịnh",
+        "email": "l2@gmail.com",
+        "phone": "0365574437",
+        "passwordHash": "$2b$12$UFUo3U1W3UAPGww9xOONjejKtkrhWxRQNH2By0njCE0fEVEvCrDD6"
+    },
+    {
+        "customerID": 6,
+        "name": "Thịnh",
+        "email": "le0@gmail.com",
+        "phone": "0365574437",
+        "passwordHash": "$2b$12$xw6pK2Pc7/0hohsUrk.jaOyPTmYc3/Wk5CxmP7dJ/8wSIoEZscAPK"
     }
 ]

@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 
 class DBManager:
@@ -111,8 +111,27 @@ class DBManager:
                 continue
             if b["status"] == "Canceled":
                 continue
-            b_in = datetime.fromisoformat(b["checkInDate"].replace("Z", "+00:00"))
-            b_out = datetime.fromisoformat(b["checkOutDate"].replace("Z", "+00:00"))
+            
+            # Convert booking dates from ISO format
+            try:
+                b_in = datetime.fromisoformat(b["checkInDate"].replace("Z", "+00:00"))
+                b_out = datetime.fromisoformat(b["checkOutDate"].replace("Z", "+00:00"))
+            except:
+                continue
+            
+            # Convert to naive datetime (remove timezone info) for comparison
+            if b_in.tzinfo is not None:
+                b_in = b_in.replace(tzinfo=None)
+            if b_out.tzinfo is not None:
+                b_out = b_out.replace(tzinfo=None)
+            
+            # Convert check_in and check_out to datetime if they are date objects
+            if isinstance(check_in, date) and not isinstance(check_in, datetime):
+                check_in = datetime.combine(check_in, datetime.min.time())
+            if isinstance(check_out, date) and not isinstance(check_out, datetime):
+                check_out = datetime.combine(check_out, datetime.max.time())
+            
+            # Check for overlap
             if not (check_out <= b_in or check_in >= b_out):
                 return False
         return True
@@ -123,6 +142,19 @@ class DBManager:
         for r in rooms:
             if r["typeID"] != typeID:
                 continue
+            if self.is_room_available(r["roomId"], check_in, check_out):
+                available.append(r)
+        return available
+    
+    def find_available_rooms_by_date(self, check_in, check_out, typeID=None):
+        """Find all available rooms for given dates, optionally filtered by room type"""
+        rooms = self.get_all_rooms()
+        available = []
+        for r in rooms:
+            # Filter by typeID if provided
+            if typeID is not None and r["typeID"] != typeID:
+                continue
+            # Check if room is available for the given dates
             if self.is_room_available(r["roomId"], check_in, check_out):
                 available.append(r)
         return available

@@ -2,13 +2,41 @@
     {
         "bookingID": 1,
         "customerID": 1,
-        "checkInDate": "2024-07-01T14:00:00Z",
-        "checkOutDate": "2024-07-05T12:00:00Z",
+        "checkInDate": "2024-07-01",
+        "checkOutDate": "2024-07-05",
         "roomId": 1,
         "totalAmount": 4000000,
         "numGuests": 2,
         "status": "Confirmed",
         "guestName": "Le Thinh",
         "guestID": "0365574437"
+    },
+    {
+        "bookingID": 2,
+        "customerID": null,
+        "roomId": 1,
+        "checkInDate": "5000-07-08",
+        "checkOutDate": "6000-07-08",
+        "numGuests": 2,
+        "totalAmount": 365243000000,
+        "status": "Canceled",
+        "guestName": "Lê Trường Thịnh",
+        "guestPhone": "0365574437",
+        "guestEmail": "l2@gmail.com",
+        "guestNationalID": "083205001681"
+    },
+    {
+        "bookingID": 3,
+        "customerID": null,
+        "roomId": 2,
+        "checkInDate": "2025-12-15",
+        "checkOutDate": "2026-01-15",
+        "numGuests": 1,
+        "totalAmount": 62000000,
+        "status": "Pending",
+        "guestName": "Gen G",
+        "guestPhone": "0365574437",
+        "guestEmail": "l@gmail.com",
+        "guestNationalID": "083205001681"
     }
 ]
