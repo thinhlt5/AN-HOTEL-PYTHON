@@ -4,4 +4,4 @@ COPY requirements.txt .
 RUN apt-get update && apt-get install -y python3-tk
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["python", "main.py"]  
+CMD ["echo", "App cua bon em co GUI va Docker thi khong ho tro GUI nen co chay file main.py o ngoai giup tui em voi a. Nhom em xin cam on co"]
