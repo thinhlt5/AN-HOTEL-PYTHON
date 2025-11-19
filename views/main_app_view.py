@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from customtkinter import FontManager
 from PIL import Image
 import os
 from datetime import datetime, date
@@ -8,13 +9,40 @@ import sys
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from modules.db_manager import DBManager
+
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
+
+# Load fonts from assets/font
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_font_dir = os.path.join(os.path.dirname(current_dir), "assets", "font")
+
+# Load 1FTV HF Gesco font
+gesco_font_path = os.path.join(assets_font_dir, "1FTV-HF-Gesco.ttf")
+if os.path.exists(gesco_font_path):
+    FontManager.load_font(gesco_font_path)
+
+# Load SVN-Gilroy Regular font
+gilroy_regular_path = os.path.join(assets_font_dir, "SVN-Gilroy Regular.otf")
+if os.path.exists(gilroy_regular_path):
+    FontManager.load_font(gilroy_regular_path)
+
+# Load SVN-Gilroy Bold font
+gilroy_bold_path = os.path.join(assets_font_dir, "SVN-Gilroy Bold.otf")
+if os.path.exists(gilroy_bold_path):
+    FontManager.load_font(gilroy_bold_path)
 
 class MainAppView(ctk.CTkFrame):
     def __init__(self, parent, controller=None, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.controller = controller
+        
+        # Initialize database manager
+        if controller:
+            self.db_manager = controller.get_db_manager()
+        else:
+            self.db_manager = DBManager("db")
         
         self.configure(fg_color="white")
         self.grid_rowconfigure(0, weight=1)
@@ -251,11 +279,11 @@ class MainAppView(ctk.CTkFrame):
         
         # Try to load banner image
         try:
-            image_path = "assets/images/hotel.png"
+            image_path = "assets/images/hotelBanner.jpg"
             if os.path.exists(image_path):
                 image = Image.open(image_path)
-                image = image.resize((1200, 300))
-                photo = ctk.CTkImage(light_image=image, size=(1200, 300))
+                image = image.resize((1200,675))
+                photo = ctk.CTkImage(light_image=image, size=(1200, 675))
                 banner_label = ctk.CTkLabel(banner_frame, image=photo, text="")
                 banner_label.image = photo
                 banner_label.pack(fill="both", expand=True)
@@ -302,7 +330,7 @@ class MainAppView(ctk.CTkFrame):
         image_frame.pack_propagate(False)
         
         try:
-            image_path = "assets/images/hotel.png"
+            image_path = "assets/images/hotel.jpg"
             if os.path.exists(image_path):
                 image = Image.open(image_path)
                 image = image.resize((400, 300))
@@ -372,18 +400,36 @@ class MainAppView(ctk.CTkFrame):
         )
         subtitle_label.pack(anchor="w", padx=20, pady=(0, 20))
         
-        # Room cards container
-        rooms_container = ctk.CTkFrame(rooms_frame, fg_color="white")
-        rooms_container.pack(fill="x", padx=10, pady=(0, 20))
+        # Room cards container - store reference for refreshing
+        self.rooms_container = ctk.CTkFrame(rooms_frame, fg_color="white")
+        self.rooms_container.pack(fill="x", padx=10, pady=(0, 20))
         # Configure grid for children (room cards will use grid)
-        rooms_container.grid_columnconfigure(0, weight=1)
-        rooms_container.grid_columnconfigure(1, weight=1)
-        rooms_container.grid_columnconfigure(2, weight=1)
+        self.rooms_container.grid_columnconfigure(0, weight=1)
+        self.rooms_container.grid_columnconfigure(1, weight=1)
+        self.rooms_container.grid_columnconfigure(2, weight=1)
         
-        # Create 3 room cards
-        for i in range(3):
+        # Load and display room types from database
+        self.load_room_type_cards()
+    
+    def load_room_type_cards(self):
+        """Load room types from database and display them as cards"""
+        # Clear existing cards
+        for widget in self.rooms_container.winfo_children():
+            widget.destroy()
+        
+        # Get room types from database
+        if self.db_manager:
+            room_types = self.db_manager.get_all_room_types()
+        else:
+            room_types = []
+        
+        # Limit to 3 room types for display
+        room_types = room_types[:3]
+        
+        # Create room cards
+        for i, room_type in enumerate(room_types):
             room_card = ctk.CTkFrame(
-                rooms_container,
+                self.rooms_container,
                 fg_color="#E5E5E5",
                 width=250,
                 height=250,
@@ -393,8 +439,8 @@ class MainAppView(ctk.CTkFrame):
             room_card.pack_propagate(False)
             
             try:
-                image_path = "assets/images/hotel.png"
-                if os.path.exists(image_path):
+                image_path = room_type.get("imagePath", "")
+                if image_path and os.path.exists(image_path) and image_path != "hi chua co tai anh ve":
                     image = Image.open(image_path)
                     image = image.resize((250, 250))
                     photo = ctk.CTkImage(light_image=image, size=(250, 250))
@@ -421,6 +467,28 @@ class MainAppView(ctk.CTkFrame):
                     height=250
                 )
                 room_img.pack(pady=0)
+        
+        # Fill remaining slots if less than 3 room types
+        for i in range(len(room_types), 3):
+            room_card = ctk.CTkFrame(
+                self.rooms_container,
+                fg_color="#E5E5E5",
+                width=250,
+                height=250,
+                corner_radius=10
+            )
+            room_card.grid(row=0, column=i, padx=10, pady=(20,0), sticky="n")
+            room_card.pack_propagate(False)
+            
+            placeholder = ctk.CTkLabel(
+                room_card,
+                text="IMAGE",
+                font=("SVN-Gilroy", 16, "bold"),
+                text_color="gray",
+                width=250,
+                height=250
+            )
+            placeholder.pack(pady=0)
     
     def parse_date(self, date_str):
         """Parse date string in DD/MM/YYYY format"""
@@ -574,6 +642,9 @@ class MainAppView(ctk.CTkFrame):
     def on_show(self):
         """Called when this view is shown - refresh sidebar to reflect login status"""
         self.create_sidebar()
+        # Refresh room type cards to show updated images
+        if hasattr(self, 'rooms_container'):
+            self.load_room_type_cards()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from customtkinter import FontManager
 from datetime import datetime, date
 import sys
 import os
@@ -12,6 +13,25 @@ from modules.booking_service import BookingService
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
+
+# Load fonts from assets/font
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_font_dir = os.path.join(os.path.dirname(current_dir), "assets", "font")
+
+# Load 1FTV HF Gesco font
+gesco_font_path = os.path.join(assets_font_dir, "1FTV-HF-Gesco.ttf")
+if os.path.exists(gesco_font_path):
+    FontManager.load_font(gesco_font_path)
+
+# Load SVN-Gilroy Regular font
+gilroy_regular_path = os.path.join(assets_font_dir, "SVN-Gilroy Regular.otf")
+if os.path.exists(gilroy_regular_path):
+    FontManager.load_font(gilroy_regular_path)
+
+# Load SVN-Gilroy Bold font
+gilroy_bold_path = os.path.join(assets_font_dir, "SVN-Gilroy Bold.otf")
+if os.path.exists(gilroy_bold_path):
+    FontManager.load_font(gilroy_bold_path)
 
 
 class BookView(ctk.CTkFrame):
@@ -136,7 +156,7 @@ class BookView(ctk.CTkFrame):
         # Create form section
         self.create_booking_form()
         
-        # Create trip summary section
+        # Create trip summary section (before book button)
         self.summary_frame = None
         self.summary_widgets = {}
         self.create_trip_summary()
@@ -152,7 +172,7 @@ class BookView(ctk.CTkFrame):
         )
         self.error_label.pack(anchor="w", padx=10, pady=(10, 0))
         
-        # Create book button (after error/success message)
+        # Create book button (after trip summary and error message)
         self.create_book_button()
     
     def create_booking_form(self):
@@ -306,8 +326,31 @@ class BookView(ctk.CTkFrame):
         if self.summary_frame:
             self.summary_frame.destroy()
         
+        # If error_label and button_frame exist, we need to maintain correct order:
+        # summary -> error_label -> button
+        # So we temporarily remove them, pack summary, then pack them back in order
+        error_label_packed = False
+        button_frame_packed = False
+        
+        if hasattr(self, 'error_label') and self.error_label:
+            self.error_label.pack_forget()
+            error_label_packed = True
+        
+        if hasattr(self, 'button_frame') and self.button_frame:
+            self.button_frame.pack_forget()
+            button_frame_packed = True
+        
+        # Pack summary frame
         self.summary_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
         self.summary_frame.pack(fill="x", pady=(0, 30))
+        
+        # Pack error_label back after summary
+        if error_label_packed and hasattr(self, 'error_label') and self.error_label:
+            self.error_label.pack(anchor="w", padx=10, pady=(10, 0))
+        
+        # Pack button frame back after error_label
+        if button_frame_packed and hasattr(self, 'button_frame') and self.button_frame:
+            self.button_frame.pack(fill="x", pady=(0, 10))
         
         # Title
         summary_title = ctk.CTkLabel(
@@ -381,7 +424,7 @@ class BookView(ctk.CTkFrame):
         # Recalculate room data
         self._initialize_room_data()
         
-        # Refresh trip summary
+        # Refresh trip summary (this will maintain correct order since it's packed before button)
         self.create_trip_summary()
         
         # Re-enable button if it was disabled
@@ -390,11 +433,12 @@ class BookView(ctk.CTkFrame):
     
     def create_book_button(self):
         """Create book button"""
-        button_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
-        button_frame.pack(fill="x", pady=(0, 10))
+        # Store reference to button frame for reordering if needed
+        self.button_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="white")
+        self.button_frame.pack(fill="x", pady=(0, 10))
         
         self.book_btn = ctk.CTkButton(
-            button_frame,
+            self.button_frame,
             text="BOOK ROOM",
             font=("SVN-Gilroy", 16, "bold"),
             fg_color="#8B4513",
@@ -444,17 +488,27 @@ class BookView(ctk.CTkFrame):
         """Show success dialog"""
         success_window = ctk.CTkToplevel(self)
         success_window.title("Success")
-        success_window.geometry("400x150")
+        # Increase window size to prevent button cropping
+        success_window.geometry("500x200")
         success_window.resizable(False, False)
         
+        # Center the window
+        success_window.transient(self)
+        success_window.grab_set()
+        
+        # Main container with padding
+        main_container = ctk.CTkFrame(success_window, fg_color="white")
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+        
         success_label = ctk.CTkLabel(
-            success_window,
+            main_container,
             text=message,
-            font=("SVN-Gilroy", 20, "bold"),
+            font=("SVN-Gilroy", 18, "bold"),
             text_color="green",
-            wraplength=350
+            wraplength=450,
+            justify="center"
         )
-        success_label.pack(padx=20, pady=20)
+        success_label.pack(pady=(10, 20))
         
         def close_and_navigate():
             success_window.destroy()
@@ -462,10 +516,19 @@ class BookView(ctk.CTkFrame):
             if self.controller:
                 self.controller.show_frame("MyBookingsView")
         
+        # Button container with proper sizing
+        button_container = ctk.CTkFrame(main_container, fg_color="white")
+        button_container.pack(fill="x", pady=(10, 0))
+        
         ok_btn = ctk.CTkButton(
-            success_window,
+            button_container,
             text="OK",
-            font=("SVN-Gilroy", 20, "bold"),
+            font=("SVN-Gilroy", 16, "bold"),
+            fg_color="#8B4513",
+            text_color="white",
+            hover_color="#A0522D",
+            height=40,
+            width=120,
             command=close_and_navigate
         )
         ok_btn.pack(pady=10)

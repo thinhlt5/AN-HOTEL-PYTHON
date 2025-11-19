@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from customtkinter import FontManager
 from PIL import Image
 import os
 import sys
@@ -10,6 +11,25 @@ from modules.db_manager import DBManager
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
+
+# Load fonts from assets/font
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_font_dir = os.path.join(os.path.dirname(current_dir), "assets", "font")
+
+# Load 1FTV HF Gesco font
+gesco_font_path = os.path.join(assets_font_dir, "1FTV-HF-Gesco.ttf")
+if os.path.exists(gesco_font_path):
+    FontManager.load_font(gesco_font_path)
+
+# Load SVN-Gilroy Regular font
+gilroy_regular_path = os.path.join(assets_font_dir, "SVN-Gilroy Regular.otf")
+if os.path.exists(gilroy_regular_path):
+    FontManager.load_font(gilroy_regular_path)
+
+# Load SVN-Gilroy Bold font
+gilroy_bold_path = os.path.join(assets_font_dir, "SVN-Gilroy Bold.otf")
+if os.path.exists(gilroy_bold_path):
+    FontManager.load_font(gilroy_bold_path)
 
 class RoomView(ctk.CTkFrame):
     def __init__(self, parent, controller=None, *args, **kwargs):
@@ -317,6 +337,11 @@ class RoomView(ctk.CTkFrame):
     def on_show(self):
         """Called when this view is shown - refresh sidebar to reflect login status"""
         self.create_sidebar()
+        # Refresh room cards to show updated images
+        # Clear existing cards and reload
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        self.load_and_display_rooms()
 
 
 if __name__ == "__main__":

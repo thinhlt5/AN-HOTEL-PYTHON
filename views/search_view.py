@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from customtkinter import FontManager
 from PIL import Image
 import os
 from datetime import datetime, date
@@ -13,6 +14,25 @@ from modules.search_service import SearchService
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
+
+# Load fonts from assets/font
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_font_dir = os.path.join(os.path.dirname(current_dir), "assets", "font")
+
+# Load 1FTV HF Gesco font
+gesco_font_path = os.path.join(assets_font_dir, "1FTV-HF-Gesco.ttf")
+if os.path.exists(gesco_font_path):
+    FontManager.load_font(gesco_font_path)
+
+# Load SVN-Gilroy Regular font
+gilroy_regular_path = os.path.join(assets_font_dir, "SVN-Gilroy Regular.otf")
+if os.path.exists(gilroy_regular_path):
+    FontManager.load_font(gilroy_regular_path)
+
+# Load SVN-Gilroy Bold font
+gilroy_bold_path = os.path.join(assets_font_dir, "SVN-Gilroy Bold.otf")
+if os.path.exists(gilroy_bold_path):
+    FontManager.load_font(gilroy_bold_path)
 
 class SearchView(ctk.CTkFrame):
     def __init__(self, parent, controller=None, checkin=None, checkout=None, guests=None, *args, **kwargs):
@@ -41,9 +61,8 @@ class SearchView(ctk.CTkFrame):
         self.main_container.grid_rowconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(0, weight=0)
         self.main_container.grid_columnconfigure(1, weight=5)
-        self.sidebar = None  # Initialize sidebar variable
+        self.create_sidebar()
         self.create_main_content()
-        self.create_sidebar()  # Create sidebar after main content
     
     def set_search_criteria_and_reload(self, checkin, checkout, guests):
         """Set new search criteria and reload the view."""
@@ -67,10 +86,6 @@ class SearchView(ctk.CTkFrame):
 
     def create_sidebar(self):
         """Create left sidebar navigation"""
-        # Destroy existing sidebar if it exists
-        if self.sidebar:
-            self.sidebar.destroy()
-        
         self.sidebar = ctk.CTkFrame(
             self.main_container,
             fg_color="#E5E5E5",
@@ -80,41 +95,15 @@ class SearchView(ctk.CTkFrame):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
         
-        # Check if user is logged in
-        is_logged_in = False
-        user_name = "User"
-        if self.controller:
-            current_user = self.controller.get_current_user()
-            if current_user:
-                is_logged_in = True
-                user_name = current_user.get("name", current_user.get("email", "User"))
-        
-        if is_logged_in:
-            # Greeting label for logged-in users
-            greeting_label = ctk.CTkLabel(
-                self.sidebar,
-                text=f"Hi, {user_name}",
-                font=("SVN-Gilroy", 16, "bold"),
-                text_color="black",
-                anchor="w"
-            )
-            greeting_label.pack(fill="x", padx=10, pady=(20, 10))
-            
-            # Navigation items for logged-in users
-            nav_items = [
-                "Home",
-                "Room",
-                "My Bookings",
-                "Account Settings",
-                "Sign out"
-            ]
-        else:
-            # Navigation items for non-logged-in users
-            nav_items = [
-                "Home",
-                "Rooms",
-                "Login"
-            ]
+        # Navigation items
+        nav_items = [
+            "Home",
+            "Rooms",
+            "Our Services",
+            "My Bookings",
+            "Account settings",
+            "Sign out"
+        ]
         
         # Create navigation buttons
         for i, item in enumerate(nav_items):
@@ -188,7 +177,8 @@ class SearchView(ctk.CTkFrame):
         # Set value if provided
         if self.search_checkin:
             self.checkin_entry.insert(0, self.search_checkin)
-        self.checkin_entry.bind("<FocusOut>", lambda e: self.reload_rooms())
+        self.checkin_entry.bind("<KeyRelease>", lambda e: self.validate_dates())
+        self.checkin_entry.bind("<FocusOut>", lambda e: self.validate_dates())
         
         # Check-out date
         checkout_label = ctk.CTkLabel(
@@ -214,8 +204,8 @@ class SearchView(ctk.CTkFrame):
         # Set value if provided
         if self.search_checkout:
             self.checkout_entry.insert(0, self.search_checkout)
-        self.checkout_entry.bind("<KeyRelease>", lambda e: self.reload_rooms())
-        self.checkout_entry.bind("<FocusOut>", lambda e: self.reload_rooms())
+        self.checkout_entry.bind("<KeyRelease>", lambda e: self.validate_dates())
+        self.checkout_entry.bind("<FocusOut>", lambda e: self.validate_dates())
         
         # Number of guests
         guests_label = ctk.CTkLabel(
@@ -411,8 +401,99 @@ class SearchView(ctk.CTkFrame):
         # Load and display available rooms
         self.load_available_rooms()
     
+    def parse_date(self, date_str):
+        """Parse date string in DD/MM/YYYY format"""
+        try:
+            # Try DD/MM/YYYY format
+            return datetime.strptime(date_str.strip(), "%d/%m/%Y").date()
+        except ValueError:
+            try:
+                # Try YYYY-MM-DD format
+                return datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+            except ValueError:
+                return None
+    
+    def validate_date_format(self, date_str):
+        """Validate date format"""
+        if not date_str or not date_str.strip():
+            return False
+        
+        # Check DD/MM/YYYY format
+        pattern1 = r'^\d{2}/\d{2}/\d{4}$'
+        # Check YYYY-MM-DD format
+        pattern2 = r'^\d{4}-\d{2}-\d{2}$'
+        
+        return bool(re.match(pattern1, date_str.strip()) or re.match(pattern2, date_str.strip()))
+    
+    def validate_dates(self):
+        """Validate check-in and check-out dates"""
+        checkin_str = self.checkin_entry.get().strip()
+        checkout_str = self.checkout_entry.get().strip()
+        
+        # Clear previous errors
+        self.date_error_label.configure(text="")
+        self.checkin_entry.configure(border_color="#E5E5E5")
+        self.checkout_entry.configure(border_color="#E5E5E5")
+        
+        # If both fields are empty, no error
+        if not checkin_str and not checkout_str:
+            return True
+        
+        # Validate check-in date
+        if checkin_str:
+            if not self.validate_date_format(checkin_str):
+                self.date_error_label.configure(text="Check-in date must be in DD/MM/YYYY format")
+                self.checkin_entry.configure(border_color="red")
+                return False
+            
+            checkin_date = self.parse_date(checkin_str)
+            if checkin_date is None:
+                self.date_error_label.configure(text="Invalid check-in date format")
+                self.checkin_entry.configure(border_color="red")
+                return False
+            
+            # Check if check-in date is not in the past
+            today = date.today()
+            if checkin_date < today:
+                self.date_error_label.configure(text="Check-in date cannot be in the past")
+                self.checkin_entry.configure(border_color="red")
+                return False
+        
+        # Validate check-out date
+        if checkout_str:
+            if not self.validate_date_format(checkout_str):
+                self.date_error_label.configure(text="Check-out date must be in DD/MM/YYYY format")
+                self.checkout_entry.configure(border_color="red")
+                return False
+            
+            checkout_date = self.parse_date(checkout_str)
+            if checkout_date is None:
+                self.date_error_label.configure(text="Invalid check-out date format")
+                self.checkout_entry.configure(border_color="red")
+                return False
+        
+        # Validate check-out is after check-in
+        if checkin_str and checkout_str:
+            checkin_date = self.parse_date(checkin_str)
+            checkout_date = self.parse_date(checkout_str)
+            
+            if checkin_date and checkout_date:
+                if checkout_date <= checkin_date:
+                    self.date_error_label.configure(text="Check-out date must be after check-in date")
+                    self.checkout_entry.configure(border_color="red")
+                    return False
+        
+        return True
+    
     def reload_rooms(self):
         """Reload rooms based on current search parameters"""
+        # Validate dates first
+        if not self.validate_dates():
+            # Clear rooms if validation fails
+            for widget in self.rooms_container.winfo_children():
+                widget.destroy()
+            return
+        
         # Update search parameters from current entries
         self.search_checkin = self.checkin_entry.get().strip()
         self.search_checkout = self.checkout_entry.get().strip()
@@ -424,8 +505,9 @@ class SearchView(ctk.CTkFrame):
         if self.search_checkout:
             self.checkout_date = self.search_service.parse_date(self.search_checkout)
         
-        # Reload rooms
-        self.load_available_rooms()
+        # Reload rooms only if dates are valid
+        if self.checkin_date and self.checkout_date:
+            self.load_available_rooms()
     
     def load_available_rooms(self):
         """Load and display available rooms from database"""
@@ -501,8 +583,7 @@ class SearchView(ctk.CTkFrame):
             image_path = room_type.get("imagePath", "")
             if image_path and os.path.exists(image_path):
                 image = Image.open(image_path)
-                # Center crop to maintain aspect ratio
-                image = self.center_crop_image(image, 180, 180)
+                image = image.resize((180, 180))
                 photo = ctk.CTkImage(light_image=image, size=(180, 180))
                 img_label = ctk.CTkLabel(image_frame, image=photo, text="")
                 img_label.image = photo
@@ -687,72 +768,20 @@ class SearchView(ctk.CTkFrame):
         if not self.controller:
             return
         
-        # Check if user is logged in
-        current_user = self.controller.get_current_user()
-        is_logged_in = current_user is not None
-        
-        if is_logged_in:
-            nav_map = {
-                "Home": "MainAppView",
-                "Room": "RoomView",
-                "My Bookings": "MyBookingsView",
-                "Account Settings": "AccountView",
-                "Sign out": None  # Special handling
-            }
-            
-            if item == "Sign out":
-                self.controller.logout()
-                return
-        else:
-            nav_map = {
-                "Home": "MainAppView",
-                "Rooms": "RoomView",
-                "Login": "SignInView"
-            }
+        nav_map = {
+            "Home": "MainAppView",
+            "Rooms": "RoomView",
+            "My Bookings": "MyBookingsView",
+            "Account settings": "AccountView",
+            "Sign out": lambda: self.controller.logout()
+        }
         
         target = nav_map.get(item)
         if target:
-            self.controller.show_frame(target)
-    
-    def center_crop_image(self, image, target_width, target_height):
-        """
-        Center crop image to target size while maintaining aspect ratio
-        
-        Args:
-            image: PIL Image object
-            target_width: Target width
-            target_height: Target height
-            
-        Returns:
-            Cropped PIL Image
-        """
-        img_width, img_height = image.size
-        target_ratio = target_width / target_height
-        img_ratio = img_width / img_height
-        
-        # Calculate crop size
-        if img_ratio > target_ratio:
-            # Image is wider, crop width
-            new_height = img_height
-            new_width = int(img_height * target_ratio)
-        else:
-            # Image is taller, crop height
-            new_width = img_width
-            new_height = int(img_width / target_ratio)
-        
-        # Calculate crop box (center crop)
-        left = (img_width - new_width) // 2
-        top = (img_height - new_height) // 2
-        right = left + new_width
-        bottom = top + new_height
-        
-        # Crop and resize
-        cropped = image.crop((left, top, right, bottom))
-        return cropped.resize((target_width, target_height), Image.Resampling.LANCZOS)
-    
-    def on_show(self):
-        """Called when this view is shown - refresh sidebar to reflect login status"""
-        self.create_sidebar()
+            if callable(target):
+                target()
+            else:
+                self.controller.show_frame(target)
 
 
 if __name__ == "__main__":

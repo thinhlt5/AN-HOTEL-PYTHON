@@ -220,5 +220,61 @@
         "guestPhone": "0365574437",
         "guestEmail": "letruongthinh0@gmail.com",
         "guestNationalID": "0365574437"
+    },
+    {
+        "bookingID": 17,
+        "customerID": 8,
+        "roomId": 4,
+        "checkInDate": "2025-11-19T00:00:00",
+        "checkOutDate": "2025-11-20T00:00:00",
+        "numGuests": 2,
+        "totalAmount": 1000000,
+        "status": "In stay",
+        "guestName": "Quang Linh",
+        "guestPhone": "0365574437",
+        "guestEmail": "l@gmail.com",
+        "guestNationalID": "012345678995"
+    },
+    {
+        "bookingID": 18,
+        "customerID": 8,
+        "roomId": 1,
+        "checkInDate": "2025-11-19T00:00:00",
+        "checkOutDate": "2025-11-20T00:00:00",
+        "numGuests": 1,
+        "totalAmount": 1000000,
+        "status": "Confirmed",
+        "guestName": "Linh",
+        "guestPhone": "012849889842",
+        "guestEmail": "lo@g.comm",
+        "guestNationalID": "012345678910"
+    },
+    {
+        "bookingID": 19,
+        "customerID": 8,
+        "roomId": 3,
+        "checkInDate": "2025-11-19T00:00:00",
+        "checkOutDate": "2025-11-20T00:00:00",
+        "numGuests": 2,
+        "totalAmount": 3000000,
+        "status": "Pending",
+        "guestName": "Thinh",
+        "guestPhone": "0365574437",
+        "guestEmail": "l@gmail.com",
+        "guestNationalID": "011544544844848"
+    },
+    {
+        "bookingID": 20,
+        "customerID": 8,
+        "roomId": 2,
+        "checkInDate": "2025-11-19T00:00:00",
+        "checkOutDate": "2025-11-20T00:00:00",
+        "numGuests": 2,
+        "totalAmount": 2000000,
+        "status": "Pending",
+        "guestName": "Thinh",
+        "guestPhone": "02564949889",
+        "guestEmail": "md@gm.cm",
+        "guestNationalID": "22e3220931"
     }
 ]

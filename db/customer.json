@@ -71,13 +71,6 @@
         "identity": "111111111"
     },
     {
-        "customerID": 11,
-        "name": "K",
-        "email": "z@g.com",
-        "phone": "012345599998",
-        "passwordHash": "$2b$12$1C2i0v.d1oW1c4mPlrufzOCP.i9hPceFyB23MJ60/ofoLGAx17u4G"
-    },
-    {
         "customerID": 12,
         "name": "l",
         "email": "m@m.com",

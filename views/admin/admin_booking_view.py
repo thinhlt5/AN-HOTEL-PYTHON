@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from customtkinter import FontManager
 from PIL import Image
 import os
 from datetime import datetime, date
@@ -13,6 +14,25 @@ from modules.db_manager import DBManager
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
+
+# Load fonts from assets/font
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_font_dir = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "assets", "font")
+
+# Load 1FTV HF Gesco font
+gesco_font_path = os.path.join(assets_font_dir, "1FTV-HF-Gesco.ttf")
+if os.path.exists(gesco_font_path):
+    FontManager.load_font(gesco_font_path)
+
+# Load SVN-Gilroy Regular font
+gilroy_regular_path = os.path.join(assets_font_dir, "SVN-Gilroy Regular.otf")
+if os.path.exists(gilroy_regular_path):
+    FontManager.load_font(gilroy_regular_path)
+
+# Load SVN-Gilroy Bold font
+gilroy_bold_path = os.path.join(assets_font_dir, "SVN-Gilroy Bold.otf")
+if os.path.exists(gilroy_bold_path):
+    FontManager.load_font(gilroy_bold_path)
 
 
 class AdminBookingView(ctk.CTkFrame):
